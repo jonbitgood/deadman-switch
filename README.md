@@ -46,6 +46,6 @@ Go to **Settings → Actions → General → Workflow permissions** and enable
 # Generate a new key and encrypt
 KEY=$(openssl rand -hex 32)
 openssl enc -aes-256-cbc -salt -pbkdf2 -in secret.txt -out secret.enc -pass pass:"$KEY"
-
+echo $KEY
 # Then update the DEADMAN_KEY secret in GitHub with the new $KEY value
 ```
