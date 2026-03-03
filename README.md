@@ -27,15 +27,39 @@ DEADMAN_KEY=<key> ./decrypt.sh
 
 ## Setup
 
-### 1. GitHub Secrets & Variables
+### 1. Create a Personal Access Token (PAT)
 
-| Name                 | Description                                              |
-|----------------------|----------------------------------------------------------|
-| `DEADMAN_PAT`        | Classic PAT with `repo` and `admin:org` scopes           |
-| `DEADMAN_KEY`        | The AES-256 encryption key used to encrypt `secret.enc`  |
-| `SUCCESSOR_USERNAME` | GitHub username of the person who inherits access        |
+The workflow needs a classic PAT (not fine-grained) because it requires permissions
+that fine-grained tokens don't support (collaborator management, repo transfers).
 
-### 3. Workflow permissions
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+2. Click **Generate new token** → **Generate new token (classic)**
+3. Give it a descriptive name like `dead-mans-switch`
+4. Set expiration to **No expiration** (critical — if the token expires before the
+   switch triggers, it fails silently and your successor gets nothing)
+5. Select these scopes:
+   - `repo` (full control of private repositories)
+   - `admin:org` → `write:org` (only needed if transferring to an org)
+6. Click **Generate token** and copy it immediately — you won't see it again
+
+### 2. GitHub Secrets & Variables
+
+Go to your repo's **Settings → Secrets and variables → Actions**.
+
+Under the **Secrets** tab, add:
+
+| Name          | Value                                                     |
+|---------------|-----------------------------------------------------------|
+| `DEADMAN_PAT` | The classic PAT you just created                          |
+| `DEADMAN_KEY` | The AES-256 encryption key used to encrypt `secret.enc`   |
+
+Under the **Variables** tab, add:
+
+| Name                 | Value                                              |
+|----------------------|----------------------------------------------------|
+| `SUCCESSOR_USERNAME` | GitHub username of the person who inherits access  |
+
+### 3. Workflow Permissions
 
 Go to **Settings → Actions → General → Workflow permissions** and enable
 **Read and write permissions** so the heartbeat branch can be pushed.
