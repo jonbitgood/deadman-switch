@@ -3,7 +3,11 @@ name: Dead Man's Switch
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1' # every Monday at midnight UTC
+    - cron: '0 0 * * 2' # every Tuesday at midnight UTC
+
+permissions:
+  contents: write
+  issues: write
 
 jobs:
   deadman-switch:
