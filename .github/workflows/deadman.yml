@@ -1,0 +1,75 @@
+name: Dead Man's Switch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 2' # every Tuesday at midnight UTC
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  deadman-switch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check last real push
+        run: |
+          last_real=$(git log --format='%aI' --all --invert-grep --author='github-actions' -1)
+          last_epoch=$(date -d "$last_real" +%s)
+          now_epoch=$(date +%s)
+          diff=$(( (now_epoch - last_epoch) / 86400 ))
+          echo "Days since last real push: $diff"
+          if [ "$diff" -ge 365 ]; then
+            echo "STALE=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Keepalive on heartbeat branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout heartbeat 2>/dev/null || git checkout --orphan heartbeat
+          date -u > .keepalive
+          git add .keepalive
+          git commit -m "chore: keepalive"
+          git push origin heartbeat --force
+
+      - name: Grant admin access to successor
+        if: env.STALE == 'true'
+        run: |
+          gh api repos/${{ github.repository }}/collaborators/${{ vars.SUCCESSOR_USERNAME }} \
+            -X PUT \
+            -f permission=admin \
+            --silent
+          echo "Admin access granted to ${{ vars.SUCCESSOR_USERNAME }}"
+        env:
+          GH_TOKEN: ${{ secrets.DEADMAN_PAT }}
+
+      - name: Share decryption key with successor
+        if: env.STALE == 'true'
+        run: |
+          gh issue create \
+            --title "Dead man's switch activated" \
+            --assignee "${{ vars.SUCCESSOR_USERNAME }}" \
+            --body "$(cat <<'EOF'
+          ## The switch has been flipped
+
+          No activity has been detected on this repository for over a year.
+
+          Admin access has been granted to you. To decrypt the secret:
+
+          ```bash
+          DEADMAN_KEY=${{ secrets.DEADMAN_KEY }} ./decrypt.sh
+          ```
+
+          The decryption key has been shared via this repo's action secrets.
+          You now have admin access and can view them at:
+          **Settings → Secrets and variables → Actions**
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.DEADMAN_PAT }}
